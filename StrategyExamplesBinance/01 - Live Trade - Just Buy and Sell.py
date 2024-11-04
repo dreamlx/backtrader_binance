@@ -61,8 +61,8 @@ class JustBuySellStrategy(bt.Strategy):
                             print(f"\t - Cancel the order {order.binance_order['orderId']} to buy {data._name}")
                             self.cancel(order)  # then cancel it
 
-                        # 使用固定数量 0.004 ETH
-                        size = 0.004  # 约等于 10 USDT
+                        # 增加交易数量到 0.005 ETH
+                        size = 0.005  # 约等于 12.5 USDT
                         current_price = data.close[0]
                         
                         print(f" - buy {ticker} size = {size} at Market price (estimated value: {size * current_price:.2f} USDT)")

@@ -11,22 +11,28 @@ from binance.enums import *
 
 class BinanceOrder(OrderBase):
     def __init__(self, owner, data, exectype, binance_order):
+        super(BinanceOrder, self).__init__()
         self.owner = owner
         self.data = data
         self.exectype = exectype
-        self.ordtype = self.Buy if binance_order['side'] == SIDE_BUY else self.Sell
-        
-        # Market order price is zero
-        if self.exectype == Order.Market:
-            self.size = float(binance_order['executedQty'])
-            self.price = sum(float(fill['price']) for fill in binance_order['fills']) / len(binance_order['fills'])  # Average price
-        else:
-            self.size = float(binance_order['origQty'])
-            self.price = float(binance_order['price'])
         self.binance_order = binance_order
         
-        super(BinanceOrder, self).__init__()
-        self.accept()
+        # 处理市价单的情况
+        if 'fills' in binance_order:
+            self.price = sum(float(fill['price']) for fill in binance_order['fills']) / len(binance_order['fills'])
+        else:
+            # 如果没有fills信息，使用当前市场价格
+            self.price = float(binance_order.get('price', data.close[0]))
+            
+        self.size = float(binance_order['origQty'])
+        self.executed = self.size
+        self.status = Order.Completed
+        
+        # 设置订单ID
+        self.info = {
+            'order_number': binance_order['orderId'],
+            'status': binance_order['status'],
+        }
 
 
 class BinanceBroker(BrokerBase):
