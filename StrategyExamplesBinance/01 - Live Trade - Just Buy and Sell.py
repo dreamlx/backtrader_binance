@@ -68,13 +68,39 @@ class JustBuySellStrategy(bt.Strategy):
                 ))
 
                 if status == 0:  # Live trade
-                    symbol_balance, short_symbol_name = self.broker._store.get_symbol_balance(ticker)
-                    
-                    # 检查是否有持仓
-                    if symbol_balance > 0:
-                        print(f"Found position: {symbol_balance} {short_symbol_name}")
+                    try:
+                        # 获取持仓和当前价格
+                        symbol_balance, short_symbol_name = self.broker._store.get_symbol_balance(ticker)
+                        current_price = data.close[0]
+                        position_value = symbol_balance * current_price
                         
-                        try:
+                        print(f"\nCurrent position: {symbol_balance} {short_symbol_name}")
+                        print(f"Position value: {position_value:.2f} USDT")
+                        
+                        # 如果持仓价值小于10 USDT，执行买入
+                        if position_value < 10:
+                            print(f"Position value less than 10 USDT, preparing to buy...")
+                            
+                            # 计算需要买入的数量，使总价值达到约12 USDT
+                            target_value = 12  # 设置稍高于最小值，确保满足要求
+                            buy_size = (target_value - position_value) / current_price
+                            buy_size = float(self.broker._store.format_quantity(ticker, buy_size))
+                            
+                            if buy_size * current_price >= 10:  # 确认买入订单满足最小交易额
+                                print(f" - buy {ticker} size = {buy_size} at Market price (value: {buy_size * current_price:.2f} USDT)")
+                                self.orders[data._name] = self.buy(
+                                    data=data,
+                                    exectype=bt.Order.Market,
+                                    size=buy_size
+                                )
+                                print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to buy {data._name}")
+                            else:
+                                print(f"Calculated buy order too small: {buy_size * current_price:.2f} USDT")
+                                
+                        # 如果持仓价值大于等于10 USDT，执行卖出
+                        else:
+                            print(f"Position value >= 10 USDT, preparing to sell...")
+                            
                             # 获取可用余额
                             available_balance = self.broker._store.get_available_balance(ticker)
                             print(f"Available balance: {available_balance} {short_symbol_name}")
@@ -82,50 +108,27 @@ class JustBuySellStrategy(bt.Strategy):
                             if available_balance <= 0:
                                 print(f"No available balance to sell for {ticker}")
                                 return
-                                
-                            # 使用更小的数量（例如95%）
-                            sell_size = min(symbol_balance, available_balance) * 0.95
-                            # 格式化数量，确保符合交易所规则
+                            
+                            # 使用99%的可用余额来卖出
+                            sell_size = min(symbol_balance, available_balance) * 0.99
                             sell_size = float(self.broker._store.format_quantity(ticker, sell_size))
                             
-                            if sell_size <= 0:
-                                print(f"Invalid sell size: {sell_size}")
-                                return
-                                
-                            print(f" - sell {ticker} size = {sell_size} at Market price")
-                            self.orders[data._name] = self.sell(
-                                data=data,
-                                exectype=bt.Order.Market,
-                                size=sell_size
-                            )
-                            print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to sell {data._name}")
+                            # 确认卖出订单满足最小交易额
+                            if sell_size * current_price >= 10:
+                                print(f" - sell {ticker} size = {sell_size} at Market price (value: {sell_size * current_price:.2f} USDT)")
+                                self.orders[data._name] = self.sell(
+                                    data=data,
+                                    exectype=bt.Order.Market,
+                                    size=sell_size
+                                )
+                                print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to sell {data._name}")
+                            else:
+                                print(f"Remaining position too small to sell: {sell_size * current_price:.2f} USDT")
                             
-                        except Exception as e:
-                            print(f"Error creating sell order: {str(e)}")
-                            import traceback
-                            traceback.print_exc()
-                        return
-                        
-                    # 如果没有持仓，执行原来的买入逻辑
-                    print(f"\t - Free balance: {self.broker.getcash()} {self.p.coin_target}")
-                    print(f"\t - {ticker} current balance = {symbol_balance} {short_symbol_name}")
-
-                    if not self.getposition(data):
-                        print("there is no position")
-                        
-                        # 检查是否有未完成的买入订单
-                        order = self.orders[data._name]
-                        if order and order.status == bt.Order.Accepted:
-                            print(f"\t - Cancel the order {order.binance_order['orderId']} to buy {data._name}")
-                            self.cancel(order)
-
-                        # 买入逻辑
-                        size = 0.005  # 约等于 12.5 USDT
-                        current_price = data.close[0]
-                        
-                        print(f" - buy {ticker} size = {size} at Market price (estimated value: {size * current_price:.2f} USDT)")
-                        self.orders[data._name] = self.buy(data=data, exectype=bt.Order.Market, size=size)
-                        print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to buy {data._name}")
+                    except Exception as e:
+                        print(f"Error in trading logic: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
 
     def notify_order(self, order):
         """Changing the status of the order"""
