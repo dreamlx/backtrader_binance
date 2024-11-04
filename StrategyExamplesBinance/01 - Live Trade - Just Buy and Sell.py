@@ -120,13 +120,26 @@ class JustBuySellStrategy(bt.Strategy):
                             
                             # 确认卖出订单满足最小交易额
                             if sell_size * current_price >= 10:
-                                print(f" - sell {ticker} size = {sell_size} at Market price (value: {sell_size * current_price:.2f} USDT)")
-                                self.orders[data._name] = self.sell(
-                                    data=data,
-                                    exectype=bt.Order.Market,
-                                    size=sell_size
-                                )
-                                print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to sell {data._name}")
+                                try:
+                                    print(f" - sell {ticker} size = {sell_size} at Market price (value: {sell_size * current_price:.2f} USDT)")
+                                    order = self.sell(
+                                        data=data,
+                                        exectype=bt.Order.Market,
+                                        size=sell_size
+                                    )
+                                    self.orders[data._name] = order
+                                    print(f"\t - The Market order has been submitted {order.binance_order['orderId']} to sell {data._name}")
+                                    
+                                    # 等待订单处理完成
+                                    time.sleep(2)
+                                    
+                                    # 获取最新余额
+                                    new_balance, _ = self.broker._store.get_symbol_balance(ticker)
+                                    print(f"\t - New balance after sell: {new_balance} {short_symbol_name}")
+                                    
+                                except Exception as e:
+                                    print(f"Error executing sell order: {str(e)}")
+                                    print("Note: The order might still have been executed on Binance")
                             else:
                                 print(f"Remaining position too small to sell: {sell_size * current_price:.2f} USDT")
                             

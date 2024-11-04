@@ -63,18 +63,18 @@ class BinanceBroker(BrokerBase):
 
         self.notifs = deque()
         self.positions = defaultdict(Position)
-
-        self.startingcash = self.cash = 0  # Стартовые и текущие свободные средства по счету
-        self.startingvalue = self.value = 0  # Стартовая и текущая стоимость позиций
-
+        self.orders = list()
         self.open_orders = list()
-    
+
+        self.startingcash = self.cash = 0
+        self.startingvalue = self.value = 0
+
         self._store = store
         self._store.binance_socket.start_user_socket(self._handle_user_socket_message)
 
     def start(self):
-        self.startingcash = self.cash = self.getcash()  # Стартовые и текущие свободные средства по счету. Подписка на позиции для портфеля/биржи
-        self.startingvalue = self.value = self.getvalue()  # Стартовая и текущая стоимость позиций
+        self.startingcash = self.cash = self.getcash()
+        self.startingvalue = self.value = self.getvalue()
 
     def _execute_order(self, order, date, executed_size, executed_price, executed_value, executed_comm):
         order.execute(
@@ -152,9 +152,14 @@ class BinanceBroker(BrokerBase):
                 # 如果无法获取成交信息，使用当前价格
                 order.price = data.close[0]
         
-        # 更新订单状态
+        # 更新订单列表
         self.orders.append(order)
         
+        # 如果订单未完成，添加到未完成订单列表
+        if order.status not in [Order.Completed, Order.Canceled, Order.Expired]:
+            self.open_orders.append(order)
+        
+        # 更新持仓信息
         if order.status == Order.Completed:
             pos = self.getposition(data)
             if pos:
