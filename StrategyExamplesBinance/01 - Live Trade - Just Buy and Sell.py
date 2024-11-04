@@ -79,14 +79,28 @@ class JustBuySellStrategy(bt.Strategy):
                         if order and order.status == bt.Order.Submitted:
                             return
                             
-                        # 如果有持仓且没有未完成订单，创建卖出订单
-                        print(f" - sell {ticker} size = {symbol_balance} at Market price")
-                        self.orders[data._name] = self.sell(
-                            data=data,
-                            exectype=bt.Order.Market,
-                            size=symbol_balance  # 卖出全部持仓
-                        )
-                        print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to sell {data._name}")
+                        try:
+                            # 获取可用余额
+                            available_balance = self.broker._store.get_available_balance(ticker)
+                            if available_balance <= 0:
+                                print(f"No available balance to sell for {ticker}")
+                                return
+                                
+                            # 使用可用余额作为卖出数量
+                            sell_size = min(symbol_balance, available_balance)
+                            # 格式化数量，确保符合交易所规则
+                            sell_size = float(self.broker._store.format_quantity(ticker, sell_size))
+                            
+                            print(f" - sell {ticker} size = {sell_size} at Market price")
+                            self.orders[data._name] = self.sell(
+                                data=data,
+                                exectype=bt.Order.Market,
+                                size=sell_size
+                            )
+                            print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to sell {data._name}")
+                            
+                        except Exception as e:
+                            print(f"Error creating sell order: {str(e)}")
                         return
                         
                     # 如果没有持仓，执行原来的买入逻辑
