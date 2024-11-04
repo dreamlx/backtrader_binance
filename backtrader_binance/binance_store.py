@@ -1,4 +1,5 @@
 import time
+import math
 
 from functools import wraps
 from math import floor
@@ -182,3 +183,42 @@ class BinanceStore(object):
     def stop_socket(self):
         self.binance_socket.stop()
         self.binance_socket.join(5)
+
+    def get_available_balance(self, symbol):
+        """Get available balance for a symbol"""
+        try:
+            # 从symbol中提取资产名称（例如从ETHUSDT中提取ETH）
+            asset = symbol.replace(self.coin_target, '')
+            
+            account = self.binance.get_account()
+            for balance in account['balances']:
+                if balance['asset'] == asset:
+                    return float(balance['free'])
+            return 0.0
+        except Exception as e:
+            print(f"Error getting available balance: {str(e)}")
+            return 0.0
+
+    def format_quantity(self, symbol, quantity):
+        """Format the quantity according to Binance's rules"""
+        try:
+            # 获取交易对的信息
+            symbol_info = self.binance.get_symbol_info(symbol)
+            if symbol_info:
+                # 获取数量精度
+                step_size = None
+                for filter in symbol_info['filters']:
+                    if filter['filterType'] == 'LOT_SIZE':
+                        step_size = float(filter['stepSize'])
+                        break
+                
+                if step_size:
+                    # 计算小数位数
+                    decimals = int(round(-math.log(step_size, 10), 0))
+                    return f"{quantity:.{decimals}f}"
+            
+            # 如果无法获取精度信息，使用默认精度
+            return f"{quantity:.6f}"
+        except Exception as e:
+            print(f"Error formatting quantity: {str(e)}")
+            return f"{quantity:.6f}"

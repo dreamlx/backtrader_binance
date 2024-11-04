@@ -82,6 +82,8 @@ class JustBuySellStrategy(bt.Strategy):
                         try:
                             # 获取可用余额
                             available_balance = self.broker._store.get_available_balance(ticker)
+                            print(f"Available balance: {available_balance} {short_symbol_name}")
+                            
                             if available_balance <= 0:
                                 print(f"No available balance to sell for {ticker}")
                                 return
