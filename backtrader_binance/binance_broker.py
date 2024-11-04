@@ -11,14 +11,16 @@ from binance.enums import *
 
 class BinanceOrder(OrderBase):
     def __init__(self, owner, data, exectype, binance_order):
+        # 在调用父类构造函数之前设置订单类型
+        self.ordtype = self.Buy if binance_order['side'] == 'BUY' else self.Sell
+        
+        # 现在调用父类构造函数
         super(BinanceOrder, self).__init__()
+        
         self.owner = owner
         self.data = data
         self.exectype = exectype
         self.binance_order = binance_order
-        
-        # 设置订单类型
-        self.ordtype = self.Buy if binance_order['side'] == 'BUY' else self.Sell
         
         # 处理市价单的情况
         if 'fills' in binance_order:
@@ -29,7 +31,6 @@ class BinanceOrder(OrderBase):
             
         self.size = float(binance_order['origQty'])
         self.executed = self.size
-        self.status = Order.Completed
         
         # 设置订单ID和状态
         self.info = {
