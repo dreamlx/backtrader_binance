@@ -88,8 +88,8 @@ class JustBuySellStrategy(bt.Strategy):
                                 print(f"No available balance to sell for {ticker}")
                                 return
                                 
-                            # 使用可用余额作为卖出数量
-                            sell_size = min(symbol_balance, available_balance)
+                            # 使用稍微小于可用余额的数量（比如99.9%）来确保不会超出
+                            sell_size = min(symbol_balance, available_balance) * 0.999
                             # 格式化数量，确保符合交易所规则
                             sell_size = float(self.broker._store.format_quantity(ticker, sell_size))
                             
@@ -103,6 +103,9 @@ class JustBuySellStrategy(bt.Strategy):
                             
                         except Exception as e:
                             print(f"Error creating sell order: {str(e)}")
+                            # 打印更详细的错误信息
+                            import traceback
+                            traceback.print_exc()
                         return
                         
                     # 如果没有持仓，执行原来的买入逻辑
