@@ -31,7 +31,7 @@ class JustBuySellStrategy(bt.Strategy):
                 else: _state = "True - Live data"
 
                 print('{} / {} [{}] - Open: {}, High: {}, Low: {}, Close: {}, Volume: {} - Live: {}'.format(
-                    bt.num2date(data.datetime[0]),
+                    bt.num2date(data.datetime[0]).strftime('%Y-%m-%d %H:%M:%S'),
                     data._name,
                     _interval,  # ticker timeframe
                     data.open[0],
