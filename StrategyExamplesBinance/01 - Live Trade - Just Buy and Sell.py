@@ -74,37 +74,25 @@ class JustBuySellStrategy(bt.Strategy):
                     if symbol_balance > 0:
                         print(f"Found position: {symbol_balance} {short_symbol_name}")
                         
-                        # 检查是否已有未完成的卖出订单
-                        order = self.orders[data._name]
-                        if order and order.status == bt.Order.Submitted:
-                            return
-                            
                         try:
-                            # 打印完整的账户信息
-                            account = self.broker._store.binance.get_account()
-                            print("\nAccount balances:")
-                            for balance in account['balances']:
-                                if float(balance['free']) > 0 or float(balance['locked']) > 0:
-                                    print(f"Asset: {balance['asset']}, Free: {balance['free']}, Locked: {balance['locked']}")
-                            
                             # 获取可用余额
                             available_balance = self.broker._store.get_available_balance(ticker)
-                            print(f"\nAvailable balance: {available_balance} {short_symbol_name}")
+                            print(f"Available balance: {available_balance} {short_symbol_name}")
                             
                             if available_balance <= 0:
                                 print(f"No available balance to sell for {ticker}")
                                 return
                                 
-                            # 使用更小的数量（例如98%）
-                            sell_size = min(symbol_balance, available_balance) * 0.98
+                            # 使用更小的数量（例如95%）
+                            sell_size = min(symbol_balance, available_balance) * 0.95
                             # 格式化数量，确保符合交易所规则
                             sell_size = float(self.broker._store.format_quantity(ticker, sell_size))
                             
-                            # 获取交易对的具体规则
-                            symbol_info = self.broker._store.binance.get_symbol_info(ticker)
-                            print(f"\nSymbol info filters: {symbol_info['filters']}")
-                            
-                            print(f"\n - sell {ticker} size = {sell_size} at Market price")
+                            if sell_size <= 0:
+                                print(f"Invalid sell size: {sell_size}")
+                                return
+                                
+                            print(f" - sell {ticker} size = {sell_size} at Market price")
                             self.orders[data._name] = self.sell(
                                 data=data,
                                 exectype=bt.Order.Market,
