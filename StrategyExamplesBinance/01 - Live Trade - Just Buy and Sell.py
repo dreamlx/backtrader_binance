@@ -61,27 +61,15 @@ class JustBuySellStrategy(bt.Strategy):
                             print(f"\t - Cancel the order {order.binance_order['orderId']} to buy {data._name}")
                             self.cancel(order)  # then cancel it
 
-                        size = float(self.broker._store._min_order[ticker])   # min value to buy for BTC and ETH
-                        min_in_USDT = float(self.broker._store._min_order_in_target[ticker])   # min value to buy for BTC and ETH
-                        _close = data.close[0]
-                        # correct size to be minimum applicable volume
-                        if size * _close < min_in_USDT: size = min_in_USDT / _close
+                        min_notional = float(self.broker._store._min_order_in_target[ticker])  # 最小名义价值(USDT)
+                        current_price = data.close[0]
+                        
+                        # 计算满足最小名义价值要求的数量
+                        size = min_notional / current_price
+                        # 向上取整到合适的精度
                         size = float(self.broker._store.format_quantity(ticker, size))
-
-                        # # Set Limit order
-                        # # Let's buy min value of ticker - min_order by price lower on 5% from current
-                        # price = float(self.broker._store.format_price(ticker, data.low[0] * 0.95))  # 5% lower than the min price
-                        # # correct size to be minimum applicable volume
-                        # if size * price < min_in_USDT: size = min_in_USDT / price
-                        # size = float(self.broker._store.format_quantity(ticker, size))
-                        #
-                        # print(f" - buy {ticker} size = {size} (min_order) at price = {price}")
-                        # self.orders[data._name] = self.buy(data=data, exectype=bt.Order.Limit, price=price, size=size)
-                        # print(f"\t - The Limit order has been submitted {self.orders[data._name].binance_order['orderId']} to buy {data._name}")
-
-                        # Set Market order
-                        # Let's buy just a little amount by market price
-                        print(f" - buy {ticker} size = {size} (min_order) at Market price")
+                        
+                        print(f" - buy {ticker} size = {size} at Market price (estimated value: {size * current_price} USDT)")
                         self.orders[data._name] = self.buy(data=data, exectype=bt.Order.Market, size=size)
                         print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to buy {data._name}")
 

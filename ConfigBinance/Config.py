@@ -9,7 +9,8 @@
 # If you liked this software => Put a star on github - https://github.com/WISEPLAT/backtrader_binance
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+import os
 
 class Config:
-    BINANCE_API_KEY = "YOUR_API_KEY"
-    BINANCE_API_SECRET = "YOUR_SECRET_KEY"
+    BINANCE_API_KEY = os.getenv('BINANCE_API_KEY', 'YOUR_API_KEY')
+    BINANCE_API_SECRET = os.getenv('BINANCE_API_SECRET', 'YOUR_SECRET_KEY')
