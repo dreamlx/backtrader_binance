@@ -3,6 +3,31 @@ import backtrader as bt
 from backtrader_binance import BinanceStore
 from ConfigBinance.Config import Config  # Configuration file
 
+"""
+这是一个简单的买卖策略示例，主要逻辑如下:
+
+1. 策略初始化:
+   - 创建orders字典用于跟踪每个交易对的订单状态
+   - 每个交易对初始订单状态为None
+
+2. 交易逻辑(next函数):
+   - 遍历所有交易对的最新K线数据
+   - 打印每根K线的OHLCV信息
+   - 仅在实时交易模式下执行以下逻辑:
+     a. 检查当前持仓
+     b. 如果有持仓且没有未完成的卖出订单,则可以考虑卖出
+     c. 如果没有持仓且没有未完成的买入订单,则可以考虑买入
+
+3. 订单管理:
+   - 使用self.orders字典记录每个交易对的订单
+   - 避免重复下单,确保一个交易对同时只有一个活跃订单
+   - 订单完成后更新订单状态
+
+4. 风险控制:
+   - 在下单前检查账户余额
+   - 确保订单状态正常
+   - 避免过度交易
+"""
 
 # Trading System
 class JustBuySellStrategy(bt.Strategy):
@@ -44,29 +69,40 @@ class JustBuySellStrategy(bt.Strategy):
 
                 if status == 0:  # Live trade
                     symbol_balance, short_symbol_name = self.broker._store.get_symbol_balance(ticker)
+                    
+                    # 检查是否有持仓
                     if symbol_balance > 0:
-                        print(f"Already have position: {symbol_balance} {short_symbol_name}")
+                        print(f"Found position: {symbol_balance} {short_symbol_name}")
+                        
+                        # 检查是否已有未完成的卖出订单
+                        order = self.orders[data._name]
+                        if order and order.status == bt.Order.Submitted:
+                            return
+                            
+                        # 如果有持仓且没有未完成订单，创建卖出订单
+                        print(f" - sell {ticker} size = {symbol_balance} at Market price")
+                        self.orders[data._name] = self.sell(
+                            data=data,
+                            exectype=bt.Order.Market,
+                            size=symbol_balance  # 卖出全部持仓
+                        )
+                        print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to sell {data._name}")
                         return
                         
-                    coin_target = self.p.coin_target
-                    print(f"\t - Free balance: {self.broker.getcash()} {coin_target}")
-                    # Very slow function! Because we are going through API to get those values...
-                    symbol_balance, short_symbol_name = self.broker._store.get_symbol_balance(ticker)
+                    # 如果没有持仓，执行原来的买入逻辑
+                    print(f"\t - Free balance: {self.broker.getcash()} {self.p.coin_target}")
                     print(f"\t - {ticker} current balance = {symbol_balance} {short_symbol_name}")
 
-                    order = self.orders[data._name]  # The order of ticker
-                    if order and order.status == bt.Order.Submitted:  # If the order is not on the exchange (sent to the broker)
-                        return  # then we are waiting for the order to be placed on the exchange, we leave, we do not continue further
-
-                    if not self.getposition(data):  # If there is no position
+                    if not self.getposition(data):
                         print("there is no position")
-
-                        # if we have order but don't get position -> then cancel it
-                        if order and order.status == bt.Order.Accepted:  # If the order is on the exchange (accepted by the broker)
+                        
+                        # 检查是否有未完成的买入订单
+                        order = self.orders[data._name]
+                        if order and order.status == bt.Order.Accepted:
                             print(f"\t - Cancel the order {order.binance_order['orderId']} to buy {data._name}")
-                            self.cancel(order)  # then cancel it
+                            self.cancel(order)
 
-                        # 增加交易数量到 0.005 ETH
+                        # 买入逻辑
                         size = 0.005  # 约等于 12.5 USDT
                         current_price = data.close[0]
                         
