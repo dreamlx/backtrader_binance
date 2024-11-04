@@ -43,6 +43,11 @@ class JustBuySellStrategy(bt.Strategy):
                 ))
 
                 if status == 0:  # Live trade
+                    symbol_balance, short_symbol_name = self.broker._store.get_symbol_balance(ticker)
+                    if symbol_balance > 0:
+                        print(f"Already have position: {symbol_balance} {short_symbol_name}")
+                        return
+                        
                     coin_target = self.p.coin_target
                     print(f"\t - Free balance: {self.broker.getcash()} {coin_target}")
                     # Very slow function! Because we are going through API to get those values...

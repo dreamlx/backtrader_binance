@@ -17,6 +17,9 @@ class BinanceOrder(OrderBase):
         self.exectype = exectype
         self.binance_order = binance_order
         
+        # 设置订单类型
+        self.ordtype = self.Buy if binance_order['side'] == 'BUY' else self.Sell
+        
         # 处理市价单的情况
         if 'fills' in binance_order:
             self.price = sum(float(fill['price']) for fill in binance_order['fills']) / len(binance_order['fills'])
@@ -28,11 +31,26 @@ class BinanceOrder(OrderBase):
         self.executed = self.size
         self.status = Order.Completed
         
-        # 设置订单ID
+        # 设置订单ID和状态
         self.info = {
             'order_number': binance_order['orderId'],
             'status': binance_order['status'],
         }
+        
+        # 设置创建时间
+        self.created = binance_order.get('transactTime', None)
+        
+        # 设置订单状态
+        if binance_order['status'] == 'FILLED':
+            self.status = Order.Completed
+        elif binance_order['status'] == 'NEW':
+            self.status = Order.Submitted
+        elif binance_order['status'] == 'PARTIALLY_FILLED':
+            self.status = Order.Partial
+        elif binance_order['status'] in ['CANCELED', 'REJECTED', 'EXPIRED']:
+            self.status = Order.Canceled
+        else:
+            self.status = Order.Created
 
 
 class BinanceBroker(BrokerBase):
