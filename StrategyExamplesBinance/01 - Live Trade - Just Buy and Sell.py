@@ -2,6 +2,7 @@ import datetime as dt
 import backtrader as bt
 from backtrader_binance import BinanceStore
 from ConfigBinance.Config import Config  # Configuration file
+import time
 
 """
 这是一个简单的买卖策略示例，主要逻辑如下:
@@ -88,12 +89,16 @@ class JustBuySellStrategy(bt.Strategy):
                             
                             if buy_size * current_price >= 10:  # 确认买入订单满足最小交易额
                                 print(f" - buy {ticker} size = {buy_size} at Market price (value: {buy_size * current_price:.2f} USDT)")
-                                self.orders[data._name] = self.buy(
+                                order = self.buy(
                                     data=data,
                                     exectype=bt.Order.Market,
                                     size=buy_size
                                 )
-                                print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to buy {data._name}")
+                                self.orders[data._name] = order
+                                print(f"\t - The Market order has been submitted {order.binance_order['orderId']} to buy {data._name}")
+                                
+                                # 等待一段时间让订单处理完成
+                                time.sleep(2)
                             else:
                                 print(f"Calculated buy order too small: {buy_size * current_price:.2f} USDT")
                                 
