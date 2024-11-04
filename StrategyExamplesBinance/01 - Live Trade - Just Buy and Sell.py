@@ -61,15 +61,11 @@ class JustBuySellStrategy(bt.Strategy):
                             print(f"\t - Cancel the order {order.binance_order['orderId']} to buy {data._name}")
                             self.cancel(order)  # then cancel it
 
-                        min_notional = float(self.broker._store._min_order_in_target[ticker])  # 最小名义价值(USDT)
+                        # 使用固定数量 0.004 ETH
+                        size = 0.004  # 约等于 10 USDT
                         current_price = data.close[0]
                         
-                        # 计算满足最小名义价值要求的数量
-                        size = min_notional / current_price
-                        # 向上取整到合适的精度
-                        size = float(self.broker._store.format_quantity(ticker, size))
-                        
-                        print(f" - buy {ticker} size = {size} at Market price (estimated value: {size * current_price} USDT)")
+                        print(f" - buy {ticker} size = {size} at Market price (estimated value: {size * current_price:.2f} USDT)")
                         self.orders[data._name] = self.buy(data=data, exectype=bt.Order.Market, size=size)
                         print(f"\t - The Market order has been submitted {self.orders[data._name].binance_order['orderId']} to buy {data._name}")
 
