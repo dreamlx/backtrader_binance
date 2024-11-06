@@ -5,7 +5,7 @@ import logging
 
 from ccxt_store.ccxt_broker import CCXTBroker, OrderType, OrderSide
 
-MIN_NOTIONAL_SAFETY_FACTOR = 1.1  # 增加10%的安全边际
+MIN_NOTIONAL_SAFETY_FACTOR = 1.5  # 增加到1.5
 
 class FuturesStrategy:
     """
@@ -142,8 +142,8 @@ class FuturesStrategy:
             position_value = target_qty * current_price
             
             # 计算所需保证金（考虑初始保证金和维持保证金）
-            initial_margin_rate = 0.02  # 2% initial margin rate for 50x leverage
-            maintenance_margin_rate = 0.01  # 1% maintenance margin
+            initial_margin_rate = 0.5  # 2% initial margin rate for 50x leverage
+            maintenance_margin_rate = 0.05  # 1% maintenance margin
             
             # 计算所需的总保证金
             required_margin = (position_value * initial_margin_rate) * MIN_NOTIONAL_SAFETY_FACTOR

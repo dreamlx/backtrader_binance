@@ -292,3 +292,23 @@ class CCXTBroker:
         except Exception as e:
             self.logger.error(f"Error transferring to isolated margin: {str(e)}")
             return False
+
+    def transfer_margin_to_isolated(self, symbol: str, amount: float):
+        try:
+            self.exchange.fapiPrivatePostMarginType({
+                'symbol': symbol,
+                'amount': str(amount),
+                'type': 'MARGIN_TRANSFER'
+            })
+        except Exception as e:
+            self.logger.error(f"Error transferring margin: {str(e)}")
+
+    def get_isolated_margin_balance(self, symbol: str) -> float:
+        try:
+            position = self.get_position(symbol)
+            if position:
+                return float(position['isolatedWallet'])
+            return 0.0
+        except Exception as e:
+            self.logger.error(f"Error getting isolated margin: {str(e)}")
+            return 0.0
