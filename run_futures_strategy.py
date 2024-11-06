@@ -31,7 +31,7 @@ def main():
     )
     
     # 设置交易对
-    symbols = ['ETH/USDT']
+    symbols = ['ETH/USDT:USDT']
     
     # 初始化策略
     strategy = FuturesStrategy(
