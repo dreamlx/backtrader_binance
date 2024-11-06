@@ -93,27 +93,34 @@ class FuturesStrategy:
     def _open_short(self, symbol: str, current_price: float):
         """开空仓"""
         try:
+            # 获取市场信息
+            market = self.broker.exchange.market(symbol)
+            min_qty = float(market['limits']['amount']['min'])
+            min_notional = float(market['limits']['cost']['min'])
+            
             # 获取可用余额
             available_balance = self.broker.get_available_balance()
             
-            # 计算需要的保证金（考虑杠杆）
-            required_margin = (self.min_position_value / self.leverage) * 1.1  # 增加10%作为缓冲
+            # 计算下单数量（考虑最小限制）
+            required_quantity = max(
+                round(self.min_position_value / current_price, market['precision']['amount']),
+                min_qty
+            )
+            
+            # 计算下单价值
+            position_value = required_quantity * current_price
+            
+            # 检查下单价值是否满足最小名义价值
+            if position_value < min_notional:
+                self.logger.warning(f"Position value {position_value} USDT is less than minimum notional {min_notional} USDT")
+                return
+            
+            # 计算所需保证金（考虑杠杆）
+            required_margin = (position_value / self.leverage) * 1.1  # 增加10%作为缓冲
             
             if available_balance < required_margin:
                 self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
                 return
-                
-            # 计算需要的数量（考虑最小交易单位）
-            required_quantity = round(self.min_position_value / current_price, 3)  # 保留3位小数
-            
-            if required_quantity <= 0:
-                self.logger.warning(f"Calculated quantity too small: {required_quantity}")
-                return
-                
-            # 添加额外参数以确保使用逐仓模式
-            params = {
-                'marginType': 'ISOLATED'
-            }
             
             self.logger.info(f"Attempting to open short position with quantity: {required_quantity}")
             
@@ -122,8 +129,7 @@ class FuturesStrategy:
                 symbol=symbol,
                 order_type=OrderType.MARKET,
                 side=OrderSide.SELL,  # 做空
-                amount=required_quantity,
-                params=params  # 添加额外参数
+                amount=required_quantity
             )
             
             self.logger.info(f"Short position opened: {order}")
@@ -141,3 +147,17 @@ class FuturesStrategy:
             
         except Exception as e:
             self.logger.error(f"Error closing position: {str(e)}")
+
+    # 从现货账户转入合约账户
+    def transfer_to_futures_account(self, amount: float, currency: str = 'USDT') -> bool:
+        try:
+            self.exchange.sapi_post_futures_transfer({
+                'asset': currency,
+                'amount': amount,
+                'type': 1  # 1：现货转资金账户
+            })
+            self.logger.info(f"Transferred {amount} {currency} to futures account")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error transferring to futures account: {str(e)}")
+            return False
