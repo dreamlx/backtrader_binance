@@ -88,84 +88,21 @@ class CCXTBroker:
             self.logger.error(f"Error initializing trading settings: {str(e)}")
             raise
             
-    def create_order(
-        self,
-        symbol: str,
-        order_type: OrderType,
-        side: OrderSide,
-        amount: float,
-        price: Optional[float] = None,
-        stop_price: Optional[float] = None,
-        params: Dict = None
-    ) -> Dict:
-        """
-        创建订单
-        """
+    def create_order(self, symbol: str, order_type: OrderType, side: OrderSide, amount: float):
         try:
-            # 准备订单参数
-            order_params = self._prepare_order_params(
-                symbol, order_type, side, amount, price, stop_price, params
-            )
-            
-            # 执行订单
-            order = self.exchange.create_order(**order_params)
-            
-            # 存储订单信息
-            self.orders[order['id']] = {
-                'order': order,
-                'status': OrderStatus.OPEN,
-                'created_at': datetime.now(),
-                'updates': []
+            order_params = {
+                'symbol': self.exchange.market_id(symbol),
+                'side': side.value,
+                'type': order_type.value,
+                'quantity': str(amount),
             }
             
-            self._pending_orders.append(order['id'])
-            self.logger.info(f"Order created: {order['id']}")
-            
-            return order
-            
+            self.logger.debug(f"Order parameters: {order_params}")
+            return self.exchange.fapiPrivatePostOrder(order_params)
         except Exception as e:
             self.logger.error(f"Error creating order: {str(e)}")
             raise
             
-    def _prepare_order_params(
-        self,
-        symbol: str,
-        order_type: OrderType,
-        side: OrderSide,
-        amount: float,
-        price: Optional[float] = None,
-        stop_price: Optional[float] = None,
-        params: Dict = None
-    ) -> Dict:
-        """准备订单参数"""
-        # 基础参数
-        order_params = {
-            'symbol': self.exchange.market_id(symbol),
-            'type': order_type.value,
-            'side': side.value,
-            'amount': float(amount)
-        }
-        
-        # 添加期货特定参数
-        extra_params = {
-            'reduceOnly': False,
-            'closePosition': False,
-            'positionSide': 'BOTH'
-        }
-        
-        # 如果有价格，添加价格参数
-        if price and order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
-            order_params['price'] = float(price)
-        
-        # 合并用户提供的额外参数
-        if params:
-            extra_params.update(params)
-        
-        # 将额外参数作为一个整体赋值给params键
-        order_params['params'] = extra_params
-        
-        return order_params
-        
     def cancel_order(self, order_id: str, symbol: Optional[str] = None) -> Dict:
         """取消订单"""
         try:
@@ -334,3 +271,7 @@ class CCXTBroker:
         except Exception as e:
             self.logger.error(f"Error getting isolated margin: {str(e)}")
             return 0.0
+
+    def validate_order_params(self, params: dict) -> bool:
+        required_fields = ['symbol', 'side', 'type', 'quantity']
+        return all(field in params for field in required_fields)
