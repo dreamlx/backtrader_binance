@@ -137,26 +137,33 @@ class CCXTBroker:
         stop_price: Optional[float] = None,
         params: Dict = None
     ) -> Dict:
+        """准备订单参数"""
         # 基础参数
         order_params = {
             'symbol': self.exchange.market_id(symbol),
             'type': order_type.value,
             'side': side.value,
-            'amount': float(amount),
-            'params': {
-                'reduceOnly': False,
-                'closePosition': False,
-                'positionSide': 'BOTH'
-            }
+            'amount': float(amount)
         }
         
-        # 合并额外参数
-        if params:
-            order_params['params'].update(params)
-            
+        # 添加期货特定参数
+        extra_params = {
+            'reduceOnly': False,
+            'closePosition': False,
+            'positionSide': 'BOTH'
+        }
+        
+        # 如果有价格，添加价格参数
         if price and order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
             order_params['price'] = float(price)
-            
+        
+        # 合并用户提供的额外参数
+        if params:
+            extra_params.update(params)
+        
+        # 将额外参数作为一个整体赋值给params键
+        order_params['params'] = extra_params
+        
         return order_params
         
     def cancel_order(self, order_id: str, symbol: Optional[str] = None) -> Dict:
