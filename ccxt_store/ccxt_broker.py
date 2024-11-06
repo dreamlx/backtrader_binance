@@ -137,25 +137,25 @@ class CCXTBroker:
         stop_price: Optional[float] = None,
         params: Dict = None
     ) -> Dict:
+        # 基础参数
         order_params = {
             'symbol': self.exchange.market_id(symbol),
             'type': order_type.value,
             'side': side.value,
-            'amount': float(amount)
+            'amount': float(amount),
+            'params': {
+                'reduceOnly': False,
+                'closePosition': False,
+                'positionSide': 'BOTH'
+            }
         }
         
         # 合并额外参数
         if params:
-            order_params['params'] = params
+            order_params['params'].update(params)
             
         if price and order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
             order_params['price'] = float(price)
-            
-        # 对于止损单和止损限价单，添加触发价格
-        if stop_price and order_type in [OrderType.STOP, OrderType.STOP_LIMIT]:
-            if 'params' not in order_params:
-                order_params['params'] = {}
-            order_params['params']['stopPrice'] = float(stop_price)
             
         return order_params
         
