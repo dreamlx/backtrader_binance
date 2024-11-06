@@ -16,7 +16,7 @@ class FuturesStrategy:
         broker: CCXTBroker,
         symbols: list,
         leverage: int = 50,
-        min_position_value: float = 100,  # 最小仓位价值
+        min_position_value: float = 50,  # 最小仓位价值
     ):
         self.broker = broker
         self.symbols = symbols
@@ -141,25 +141,27 @@ class FuturesStrategy:
             # 计算实际下单价值
             position_value = target_qty * current_price
             
-            # 添加详细日志
-            self.logger.info(f"Market info:")
-            self.logger.info(f"- Minimum quantity: {min_qty}")
-            self.logger.info(f"- Minimum notional: {min_notional} USDT")
-            self.logger.info(f"- Precision: {precision}")
-            self.logger.info(f"Calculations:")
-            self.logger.info(f"- Min required quantity: {min_required_qty}")
-            self.logger.info(f"- Target value quantity: {target_value_qty}")
-            self.logger.info(f"- Final target quantity: {target_qty}")
-            self.logger.info(f"- Final position value: {position_value} USDT")
+            # 计算所需保证金（考虑初始保证金和维持保证金）
+            initial_margin_rate = 0.02  # 2% initial margin rate for 50x leverage
+            maintenance_margin_rate = 0.01  # 1% maintenance margin
+            
+            # 计算所需的总保证金
+            required_margin = (position_value * initial_margin_rate) * MIN_NOTIONAL_SAFETY_FACTOR
+            maintenance_margin = position_value * maintenance_margin_rate
+            total_required_margin = required_margin + maintenance_margin
             
             # 获取可用余额
             available_balance = self.broker.get_available_balance()
             
-            # 计算所需保证金
-            required_margin = (position_value / self.leverage) * MIN_NOTIONAL_SAFETY_FACTOR
+            # 添加保证金相关的日志
+            self.logger.info(f"Margin calculations:")
+            self.logger.info(f"- Initial margin required: {required_margin} USDT")
+            self.logger.info(f"- Maintenance margin: {maintenance_margin} USDT")
+            self.logger.info(f"- Total margin required: {total_required_margin} USDT")
+            self.logger.info(f"- Available balance: {available_balance} USDT")
             
-            if available_balance < required_margin:
-                self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
+            if available_balance < total_required_margin:
+                self.logger.warning(f"Insufficient balance. Required: {total_required_margin} USDT, Available: {available_balance} USDT")
                 return
                 
             # 最后验证名义价值
