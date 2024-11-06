@@ -137,28 +137,24 @@ class CCXTBroker:
         stop_price: Optional[float] = None,
         params: Dict = None
     ) -> Dict:
-        """准备订单参数"""
-        # 使用 CCXT 标准格式
         order_params = {
-            'symbol': self.exchange.market_id(symbol),  # 需要转换为交易所的市场ID格式
+            'symbol': self.exchange.market_id(symbol),
             'type': order_type.value,
             'side': side.value,
-            'amount': float(amount),  # 确保是浮点数
-            'params': {
-                'positionSide': 'BOTH',  # Binance Future 需要指定持仓方向
-            }
+            'amount': float(amount)
         }
         
         # 合并额外参数
         if params:
-            order_params['params'].update(params)
+            order_params['params'] = params
             
-        # 对于限价单和止损限价单，添加价格
         if price and order_type in [OrderType.LIMIT, OrderType.STOP_LIMIT]:
             order_params['price'] = float(price)
             
         # 对于止损单和止损限价单，添加触发价格
         if stop_price and order_type in [OrderType.STOP, OrderType.STOP_LIMIT]:
+            if 'params' not in order_params:
+                order_params['params'] = {}
             order_params['params']['stopPrice'] = float(stop_price)
             
         return order_params
