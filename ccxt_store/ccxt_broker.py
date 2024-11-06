@@ -90,17 +90,25 @@ class CCXTBroker:
             
     def create_order(self, symbol: str, order_type: OrderType, side: OrderSide, amount: float):
         try:
+            # 记录原始参数
+            self.logger.debug(f"Original parameters: side={side}, type={type(side)}")
+            
+            # 确保 side 是正确的格式
+            side_str = side.value if isinstance(side, OrderSide) else side.upper()
+            self.logger.debug(f"Processed side parameter: {side_str}")
+            
             order_params = {
                 'symbol': self.exchange.market_id(symbol),
-                'side': side.value,
+                'side': side_str,
                 'type': order_type.value,
                 'quantity': str(amount),
             }
             
-            self.logger.debug(f"Order parameters: {order_params}")
+            self.logger.debug(f"Final order parameters: {order_params}")
             return self.exchange.fapiPrivatePostOrder(order_params)
         except Exception as e:
             self.logger.error(f"Error creating order: {str(e)}")
+            self.logger.error(f"Failed parameters: {order_params}")
             raise
             
     def cancel_order(self, order_id: str, symbol: Optional[str] = None) -> Dict:
@@ -273,5 +281,9 @@ class CCXTBroker:
             return 0.0
 
     def validate_order_params(self, params: dict) -> bool:
-        required_fields = ['symbol', 'side', 'type', 'quantity']
-        return all(field in params for field in required_fields)
+        """验证订单参数"""
+        if 'side' not in params:
+            return False
+        if params['side'] not in ['BUY', 'SELL']:
+            return False
+        return True
