@@ -106,10 +106,11 @@ class JustBuySellStrategy(bt.Strategy):
 
                 if status == 0:  # Live trade
                     try:
-                        # Get futures position information
-                        positions = exchange.fapiPrivateGetPositionRisk()
-                        current_position = next((pos for pos in positions if pos['symbol'] == ticker.replace('/', '')), None)
-                        
+                        # 使用v2版本的position risk API
+                        current_position = self.get_position_info(exchange, ticker)
+                        if current_position is None:
+                            print(f"No position found for {ticker}")
+                            return
                         current_price = data.close[0]
                         
                         if current_position:
@@ -119,29 +120,26 @@ class JustBuySellStrategy(bt.Strategy):
                             print(f"\nCurrent position: {position_size} {ticker}")
                             print(f"Unrealized PnL: {unrealized_pnl} USDT")
                             
-                            # Close position if PnL > 1% or < -0.5%
+                            # 止盈止损逻辑
                             if position_size != 0:
                                 roi = (unrealized_pnl / (abs(position_size) * current_price)) * 100
                                 if roi > 1 or roi < -0.5:
-                                    # Close position
                                     order = self.close(data=data)
                                     self.orders[data._name] = order
                                     print(f"Closing position at ROI: {roi}%")
                                     time.sleep(2)
                             
-                        # Open new position if no current position
+                        # 开仓逻辑
                         if abs(float(current_position['positionAmt'])) < 0.001:
-                            # Calculate position size (in USD)
-                            account = exchange.fapiPrivate_get_account()
+                            # 获取账户信息
+                            account = exchange.fapiPrivateGetAccount()
                             available_balance = float(account['availableBalance'])
-                            position_size_usd = min(available_balance * 0.1, 100)  # Use 10% of balance or max 100 USDT
+                            position_size_usd = min(available_balance * 0.1, 100)
                             
-                            # Convert to contract quantity
                             quantity = position_size_usd / current_price
                             quantity = float(self.broker._store.format_quantity(ticker, quantity))
                             
-                            if quantity * current_price >= 10:  # Minimum order size check
-                                # Alternating between long and short based on simple condition
+                            if quantity * current_price >= 10:
                                 if data.close[0] > data.close[-1]:
                                     order = self.buy(data=data, size=quantity)
                                 else:
@@ -186,6 +184,20 @@ class JustBuySellStrategy(bt.Strategy):
         """Print string with date to the console"""
         dt = bt.num2date(self.datas[0].datetime[0]) if not dt else dt  # date or date of the current bar
         print(f'{dt.strftime("%d.%m.%Y %H:%M")}, {txt}')  # Print the date and time with the specified text to the console
+
+    def get_position_info(self, exchange, ticker):
+        max_retries = 3
+        retry_delay = 2  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                positions = exchange.fapiPrivateV2GetPositionRisk()
+                return next((pos for pos in positions if pos['symbol'] == ticker.replace('/', '')), None)
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise e
+                print(f"Error getting position info (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                time.sleep(retry_delay)
 
 
 if __name__ == '__main__':
