@@ -36,7 +36,7 @@ except Exception as e:
 
 2. 交易逻辑(next函数):
    - 遍历所有交易对的最新K线数据
-   - 打印每根K线的OHLCV信息
+   - 打印每根K线OHLCV信息
    - 仅在实时交易模式下执行以下逻辑:
      a. 检查当前持仓
      b. 如果有持仓且没有未完成的卖出订单,则可以考虑卖出
@@ -83,56 +83,30 @@ class JustBuySellStrategy(bt.Strategy):
 
     def next(self):
         """Arrival of a new ticker candle"""
-        for data in self.datas:  # Running through all the requested bars of all tickers
+        for data in self.datas:
             ticker = data._name
-            status = data._state  # 0 - Live data, 1 - History data, 2 - None
-            _interval = self.broker._store.get_interval(data._timeframe, data._compression)
-
-            if status in [0, 1]:
-                if status: _state = "False - History data"
-                else: _state = "True - Live data"
-
-                print('{} / {} [{}] - Open: {}, High: {}, Low: {}, Close: {}, Volume: {} - Live: {}'.format(
-                    bt.num2date(data.datetime[0]).strftime('%Y-%m-%d %H:%M:%S'),
-                    data._name,
-                    _interval,  # ticker timeframe
-                    data.open[0],
-                    data.high[0],
-                    data.low[0],
-                    data.close[0],
-                    data.volume[0],
-                    _state,
-                ))
-
-                if status == 0:  # Live trade
-                    try:
-                        # 使用v2版本的position risk API
-                        current_position = self.get_position_info(exchange, ticker)
-                        if current_position is None:
-                            print(f"No position found for {ticker}")
-                            return
-                        current_price = data.close[0]
-                        
-                        if current_position:
-                            position_size = float(current_position['positionAmt'])
-                            unrealized_pnl = float(current_position['unRealizedProfit'])
-                            
-                            print(f"\nCurrent position: {position_size} {ticker}")
-                            print(f"Unrealized PnL: {unrealized_pnl} USDT")
-                            
-                            # 止盈止损逻辑
-                            if position_size != 0:
-                                roi = (unrealized_pnl / (abs(position_size) * current_price)) * 100
-                                if roi > 1 or roi < -0.5:
-                                    order = self.close(data=data)
-                                    self.orders[data._name] = order
-                                    print(f"Closing position at ROI: {roi}%")
-                                    time.sleep(2)
-                            
-                        # 开仓逻辑
-                        if abs(float(current_position['positionAmt'])) < 0.001:
-                            # 获取账户信息
-                            account = exchange.fapiPrivateGetAccount()
+            status = data._state
+            
+            if status == 0:  # Live trade
+                try:
+                    # 使用v2版本的position risk API
+                    current_position = self.get_position_info(exchange, ticker)
+                    if current_position is None:
+                        print(f"No position found for {ticker}")
+                        return
+                    
+                    current_price = data.close[0]
+                    position_size = float(current_position['positionAmt'])
+                    unrealized_pnl = float(current_position['unRealizedProfit'])
+                    
+                    print(f"\nCurrent position: {position_size} {ticker}")
+                    print(f"Unrealized PnL: {unrealized_pnl} USDT")
+                    
+                    # 开仓逻辑
+                    if abs(position_size) < 0.001:
+                        try:
+                            # 使用v2版本的account API
+                            account = self.get_account_info(exchange)
                             available_balance = float(account['availableBalance'])
                             position_size_usd = min(available_balance * 0.1, 100)
                             
@@ -148,11 +122,23 @@ class JustBuySellStrategy(bt.Strategy):
                                 self.orders[data._name] = order
                                 print(f"Opening new position: {quantity} contracts")
                                 time.sleep(2)
-                    
-                    except Exception as e:
-                        print(f"Error in trading logic: {str(e)}")
-                        import traceback
-                        traceback.print_exc()
+                        except Exception as e:
+                            print(f"Error getting account info: {str(e)}")
+                            return
+                        
+                    # 止盈止损逻辑
+                    elif position_size != 0:
+                        roi = (unrealized_pnl / (abs(position_size) * current_price)) * 100
+                        if roi > 1 or roi < -0.5:
+                            order = self.close(data=data)
+                            self.orders[data._name] = order
+                            print(f"Closing position at ROI: {roi}%")
+                            time.sleep(2)
+                
+                except Exception as e:
+                    print(f"Error in trading logic: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
@@ -197,6 +183,20 @@ class JustBuySellStrategy(bt.Strategy):
                 if attempt == max_retries - 1:
                     raise e
                 print(f"Error getting position info (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                time.sleep(retry_delay)
+
+    def get_account_info(self, exchange):
+        max_retries = 3
+        retry_delay = 2  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                account = exchange.fapiPrivateV2GetAccount()
+                return account
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise e
+                print(f"Error getting account info (attempt {attempt + 1}/{max_retries}): {str(e)}")
                 time.sleep(retry_delay)
 
 
