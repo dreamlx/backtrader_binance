@@ -4,7 +4,7 @@ import backtrader as bt
 from backtrader_binance import BinanceStore
 from ConfigBinance.Config import Config  # Configuration file
 import time
-
+#
 # Add CCXT exchange initialization
 exchange = ccxt.binance({
     'apiKey': Config.BINANCE_API_KEY,
