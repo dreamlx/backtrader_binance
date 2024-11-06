@@ -66,15 +66,23 @@ class CCXTBroker:
                             'symbol': self.exchange.market_id(symbol)
                         })
                         
-                        # 设置保证金模式 - 修复参数名称
-                        self.exchange.fapiPrivatePostMarginType({
-                            'symbol': self.exchange.market_id(symbol),
-                            'marginType': self.margin_mode.upper()  # 需要大写
-                        })
+                        # 设置保证金模式
+                        try:
+                            self.exchange.fapiPrivatePostMarginType({
+                                'symbol': self.exchange.market_id(symbol),
+                                'marginType': self.margin_mode.upper()
+                            })
+                        except Exception as margin_error:
+                            # 检查是否是"无需更改保证金类型"的错误
+                            if '"code":-4046' in str(margin_error):
+                                self.logger.info(f"Margin type already set for {symbol}")
+                            else:
+                                raise margin_error
                         
                         self.logger.info(f"Trading settings initialized for {symbol}: leverage={self.leverage}, margin_mode={self.margin_mode}")
                     except Exception as e:
                         self.logger.error(f"Error initializing trading settings for {symbol}: {str(e)}")
+                        raise
                         
         except Exception as e:
             self.logger.error(f"Error initializing trading settings: {str(e)}")
