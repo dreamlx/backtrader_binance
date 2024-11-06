@@ -169,14 +169,6 @@ class FuturesStrategy:
                 self.logger.warning(f"Position value {position_value} USDT is still less than minimum notional {min_notional} USDT")
                 return
                 
-            # 计算完 total_required_margin 后，先转入保证金
-            if self.broker.margin_mode.lower() == 'isolated':
-                transfer_amount = total_required_margin * 1.1  # 多转 10% 作为缓冲
-                success = self.broker.transfer_to_isolated_margin(symbol, transfer_amount)
-                if not success:
-                    self.logger.error("Failed to transfer margin to isolated account")
-                    return
-                
             self.logger.info(f"Attempting to open short position with quantity: {target_qty} (Value: {position_value} USDT)")
             
             # 创建订单
@@ -186,6 +178,15 @@ class FuturesStrategy:
                 side=OrderSide.SELL,
                 amount=target_qty
             )
+            
+            # 如果开仓成功，检查是否需要追加保证金
+            if order and self.broker.margin_mode.lower() == 'isolated':
+                position = self.broker.get_position(symbol)
+                if position:
+                    current_margin = float(position['isolatedWallet'])
+                    if current_margin < total_required_margin:
+                        additional_margin = total_required_margin - current_margin
+                        self.broker.add_position_margin(symbol, additional_margin)
             
             self.logger.info(f"Short position opened: {order}")
             return order

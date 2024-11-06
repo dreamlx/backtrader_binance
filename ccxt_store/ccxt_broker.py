@@ -277,6 +277,21 @@ class CCXTBroker:
             self.logger.error(f"Error getting available balance: {str(e)}")
             return 0.0
 
+    def add_position_margin(self, symbol: str, amount: float) -> bool:
+        """追加逐仓保证金"""
+        try:
+            self.exchange.fapiPrivatePostPositionMargin({
+                'symbol': self.exchange.market_id(symbol),
+                'amount': str(amount),
+                'type': 1,  # 1: 追加保证金
+                'positionSide': 'BOTH'
+            })
+            self.logger.info(f"Added {amount} USDT margin to position {symbol}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error adding position margin: {str(e)}")
+            return False
+
     def transfer_to_isolated_margin(self, symbol: str, amount: float) -> bool:
         """将资金转入逐仓保证金账户"""
         try:
