@@ -102,8 +102,13 @@ class FuturesStrategy:
             available_balance = self.broker.get_available_balance()
             
             # 计算下单数量（考虑最小限制）
+            precision = market['precision']['amount']
+            # 确保precision是整数
+            if isinstance(precision, float):
+                precision = int(precision)
+            
             required_quantity = max(
-                round(self.min_position_value / current_price, market['precision']['amount']),
+                round(self.min_position_value / current_price, precision),
                 min_qty
             )
             
