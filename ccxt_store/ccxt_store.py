@@ -15,12 +15,14 @@ class CCXTStore:
         api_key: str = None,
         secret_key: str = None,
         additional_options: dict = None,
-        retries: int = 3
+        retries: int = 3,
+        symbols: list = None
     ):
         self.exchange_name = exchange_name
         self.api_key = api_key
         self.secret_key = secret_key
         self.retries = retries
+        self.symbols = symbols or []
         
         # 初始化exchange
         self.exchange: Exchange = getattr(ccxt, exchange_name)({

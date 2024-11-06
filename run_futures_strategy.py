@@ -5,10 +5,14 @@ from ccxt_store.ccxt_feed import CCXTFeed
 from ccxt_store.ccxt_broker import CCXTBroker
 from ccxt_store.strategies.futures_strategy import FuturesStrategy
 from ConfigBinance.Config import Config  # Configuration file
+import time
 
 def main():
     # 设置日志
     logging.basicConfig(level=logging.INFO)
+    
+    # 设置交易对
+    symbols = ['ETHUSDT']
     
     # 初始化store
     store = CCXTStore(
@@ -19,7 +23,8 @@ def main():
             'defaultType': 'future',
             'adjustForTimeDifference': True,
             'hedgeMode': False,
-        }
+        },
+        symbols=symbols
     )
     
     # 初始化broker
@@ -28,17 +33,6 @@ def main():
         leverage=50,
         margin_mode='isolated',
         default_type='future'
-    )
-    
-    # 设置交易对
-    symbols = ['ETHUSDT']
-    
-    # 初始化策略
-    strategy = FuturesStrategy(
-        broker=broker,
-        symbols=symbols,
-        leverage=50,
-        min_position_value=20  # 设置最小仓位价值为20 USDT
     )
     
     # 初始化数据馈送

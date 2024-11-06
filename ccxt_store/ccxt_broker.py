@@ -54,19 +54,28 @@ class CCXTBroker:
         """初始化交易设置（杠杆、保证金模式等）"""
         try:
             if self.default_type == 'future':
-                # 设置杠杆
-                self.exchange.fapiPrivatePostLeverage({
-                    'leverage': self.leverage,
-                    'symbol': '*'  # 为所有交易对设置
-                })
+                # 获取所有交易对的列表
+                markets = self.exchange.load_markets()
                 
-                # 设置保证金模式
-                self.exchange.fapiPrivatePostMarginType({
-                    'marginType': self.margin_mode,
-                    'symbol': '*'
-                })
-                
-            self.logger.info(f"Trading settings initialized: leverage={self.leverage}, margin_mode={self.margin_mode}")
+                # 遍历所有交易对
+                for symbol in self.store.symbols:  # We'll need to add this property to CCXTStore
+                    try:
+                        # 设置杠杆
+                        self.exchange.fapiPrivatePostLeverage({
+                            'leverage': self.leverage,
+                            'symbol': self.exchange.market_id(symbol)
+                        })
+                        
+                        # 设置保证金模式
+                        self.exchange.fapiPrivatePostMarginType({
+                            'marginType': self.margin_mode,
+                            'symbol': self.exchange.market_id(symbol)
+                        })
+                        
+                        self.logger.info(f"Trading settings initialized for {symbol}: leverage={self.leverage}, margin_mode={self.margin_mode}")
+                    except Exception as e:
+                        self.logger.error(f"Error initializing trading settings for {symbol}: {str(e)}")
+                        
         except Exception as e:
             self.logger.error(f"Error initializing trading settings: {str(e)}")
             raise
