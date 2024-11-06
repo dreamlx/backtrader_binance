@@ -5,7 +5,8 @@ from functools import wraps
 from math import floor
 
 from backtrader.dataseries import TimeFrame
-from binance import Client, ThreadedWebsocketManager
+from binance.client import Client
+from binance.websockets import ThreadedWebsocketManager
 from binance.enums import *
 from binance.exceptions import BinanceAPIException
 from requests.exceptions import ConnectTimeout, ConnectionError
