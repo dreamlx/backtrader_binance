@@ -57,7 +57,8 @@ class FuturesStrategy:
                 self.logger.info(f"No position found for {symbol}")
                 return
                 
-            position_size = float(position['positionAmt'])
+            # 从position中获取持仓数量
+            position_size = float(position.get('positionAmt', 0))
             current_price = float(data['close'])
             position_value = abs(position_size * current_price)
             
@@ -69,10 +70,17 @@ class FuturesStrategy:
             
             # 如果仓位价值小于20 USDT，开空仓
             if position_value < self.min_position_value:
+                # 计算需要的保证金（考虑杠杆）
+                required_margin = (self.min_position_value / self.leverage) * 1.1  # 增加10%作为缓冲
+                
                 # 检查是否有足够的余额
-                required_margin = (self.min_position_value / self.leverage) * 1.1
                 if available_balance >= required_margin:
-                    self._open_short(symbol, current_price)
+                    # 计算需要的数量（考虑最小交易单位）
+                    required_quantity = round(self.min_position_value / current_price, 3)  # 保留3位小数
+                    if required_quantity > 0:
+                        self._open_short(symbol, current_price)
+                    else:
+                        self.logger.warning(f"Calculated quantity too small: {required_quantity}")
                 else:
                     self.logger.warning(f"Insufficient balance for opening position. Required: {required_margin} USDT, Available: {available_balance} USDT")
             else:
