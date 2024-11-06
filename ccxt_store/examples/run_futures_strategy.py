@@ -4,7 +4,7 @@ from ccxt_store.ccxt_store import CCXTStore
 from ccxt_store.ccxt_feed import CCXTFeed
 from ccxt_store.ccxt_broker import CCXTBroker
 from ccxt_store.strategies.futures_strategy import FuturesStrategy
-from config import Config  # 你的配置文件
+from ConfigBinance.Config import Config  # Configuration file
 
 def main():
     # 设置日志
