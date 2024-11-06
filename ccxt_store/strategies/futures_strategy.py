@@ -99,6 +99,11 @@ class FuturesStrategy:
             # 计算需要的保证金（考虑杠杆）
             required_margin = (self.min_position_value / self.leverage) * 1.1  # 增加10%作为缓冲
             
+            # 添加转移保证金的步骤
+            if not self.broker.transfer_to_isolated_margin(symbol, required_margin):
+                self.logger.error("Failed to transfer margin to isolated account")
+                return
+                
             if available_balance < required_margin:
                 self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
                 return
