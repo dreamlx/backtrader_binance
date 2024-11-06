@@ -267,7 +267,7 @@ class CCXTBroker:
                 )
                 if usdt_asset:
                     return float(usdt_asset['availableBalance'])
-            return 0.0
+                return 0.0
         except Exception as e:
             self.logger.error(f"Error getting available balance: {str(e)}")
-            raise
+            return 0.0

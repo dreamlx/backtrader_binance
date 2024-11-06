@@ -63,9 +63,18 @@ class FuturesStrategy:
             
             self.logger.info(f"Current position value: {position_value} USDT")
             
+            # 获取可用余额
+            available_balance = self.broker.get_available_balance()
+            self.logger.info(f"Available balance: {available_balance} USDT")
+            
             # 如果仓位价值小于20 USDT，开空仓
             if position_value < self.min_position_value:
-                self._open_short(symbol, current_price)
+                # 检查是否有足够的余额
+                required_margin = (self.min_position_value / self.leverage) * 1.1
+                if available_balance >= required_margin:
+                    self._open_short(symbol, current_price)
+                else:
+                    self.logger.warning(f"Insufficient balance for opening position. Required: {required_margin} USDT, Available: {available_balance} USDT")
             else:
                 # 平仓
                 self._close_position(symbol)
