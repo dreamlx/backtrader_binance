@@ -45,6 +45,14 @@ class FuturesStrategy:
         try:
             # 获取初始持仓信息
             for symbol in self.symbols:
+                # 打印市场信息
+                market = self.broker.exchange.market(symbol)
+                self.logger.info(f"Market info for {symbol}:")
+                self.logger.info(f"- Minimum amount: {market['limits']['amount']['min']}")
+                self.logger.info(f"- Minimum cost: {market['limits']['cost']['min']}")
+                self.logger.info(f"- Amount precision: {market['precision']['amount']}")
+                self.logger.info(f"- Price precision: {market['precision']['price']}")
+                
                 position = self.broker.get_position(symbol)
                 if position:
                     self.positions[symbol] = position
@@ -109,37 +117,43 @@ class FuturesStrategy:
             # 使用更高的最小名义价值
             min_notional = max(10.0, float(market['limits']['cost']['min']))
             
-            # 计算最小需要的数量以满足最小名义价值
-            min_required_qty = max(
-                min_qty,
-                min_notional / current_price
-            )
-            
             # 获取精度
             precision = market['precision']['amount']
             if isinstance(precision, float):
                 precision = int(precision)
             
-            # 计算目标数量（确保大于最小要求）
-            target_qty = max(
-                round(self.min_position_value / current_price, precision),
-                round(min_required_qty, precision)  # 确保最小数量也经过精度处理
-            )
+            # 计算最小需要的数量以满足最小名义价值
+            min_required_qty = min_notional / current_price
+            
+            # 计算目标数量（基于目标仓位价值）
+            target_value_qty = self.min_position_value / current_price
+            
+            # 选择更大的数量，并按精度处理
+            target_qty = round(max(
+                target_value_qty,
+                min_required_qty,
+                min_qty
+            ), precision)
             
             # 计算实际下单价值
             position_value = target_qty * current_price
             
-            # 添加更多日志
-            self.logger.info(f"Market minimum notional: {min_notional} USDT")
-            self.logger.info(f"Calculated minimum quantity: {min_required_qty}")
-            self.logger.info(f"Target quantity: {target_qty}")
-            self.logger.info(f"Position value: {position_value} USDT")
+            # 添加详细日志
+            self.logger.info(f"Market info:")
+            self.logger.info(f"- Minimum quantity: {min_qty}")
+            self.logger.info(f"- Minimum notional: {min_notional} USDT")
+            self.logger.info(f"- Precision: {precision}")
+            self.logger.info(f"Calculations:")
+            self.logger.info(f"- Min required quantity: {min_required_qty}")
+            self.logger.info(f"- Target value quantity: {target_value_qty}")
+            self.logger.info(f"- Final target quantity: {target_qty}")
+            self.logger.info(f"- Final position value: {position_value} USDT")
             
             # 获取可用余额
             available_balance = self.broker.get_available_balance()
             
             # 计算所需保证金
-            required_margin = (position_value / self.leverage) * 1.1
+            required_margin = (position_value / self.leverage) * MIN_NOTIONAL_SAFETY_FACTOR
             
             if available_balance < required_margin:
                 self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
