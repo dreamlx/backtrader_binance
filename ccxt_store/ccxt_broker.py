@@ -58,7 +58,7 @@ class CCXTBroker:
                 markets = self.exchange.load_markets()
                 
                 # 遍历所有交易对
-                for symbol in self.store.symbols:  # We'll need to add this property to CCXTStore
+                for symbol in self.store.symbols:
                     try:
                         # 设置杠杆
                         self.exchange.fapiPrivatePostLeverage({
@@ -66,10 +66,10 @@ class CCXTBroker:
                             'symbol': self.exchange.market_id(symbol)
                         })
                         
-                        # 设置保证金模式
+                        # 设置保证金模式 - 修复参数名称
                         self.exchange.fapiPrivatePostMarginType({
-                            'marginType': self.margin_mode,
-                            'symbol': self.exchange.market_id(symbol)
+                            'symbol': self.exchange.market_id(symbol),
+                            'marginType': self.margin_mode.upper()  # 需要大写
                         })
                         
                         self.logger.info(f"Trading settings initialized for {symbol}: leverage={self.leverage}, margin_mode={self.margin_mode}")

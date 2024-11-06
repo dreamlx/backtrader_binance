@@ -35,6 +35,14 @@ def main():
         default_type='future'
     )
     
+    # 初始化策略
+    strategy = FuturesStrategy(
+        broker=broker,
+        symbols=symbols,
+        leverage=50,
+        min_position_value=20
+    )
+    
     # 初始化数据馈送
     feeds = {}
     for symbol in symbols:
