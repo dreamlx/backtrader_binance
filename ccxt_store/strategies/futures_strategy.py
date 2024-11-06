@@ -118,8 +118,7 @@ class FuturesStrategy:
                 symbol=symbol,
                 order_type=OrderType.MARKET,
                 side=OrderSide.SELL,  # 做空
-                amount=required_quantity,
-                params={'positionSide': 'BOTH'}  # 确保使用双向持仓模式
+                amount=required_quantity
             )
             
             self.logger.info(f"Short position opened: {order}")
