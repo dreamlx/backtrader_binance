@@ -11,8 +11,8 @@ class OrderType(Enum):
     STOP_LIMIT = 'stop_limit'
 
 class OrderSide(Enum):
-    BUY = 'buy'
-    SELL = 'sell'
+    BUY = 'BUY'
+    SELL = 'SELL'
 
 class OrderStatus(Enum):
     PENDING = 'pending'
@@ -90,22 +90,35 @@ class CCXTBroker:
             
     def create_order(self, symbol: str, order_type: OrderType, side: OrderSide, amount: float):
         try:
-            # 记录原始参数
-            self.logger.debug(f"Original parameters: side={side}, type={type(side)}")
+            # 详细的参数日志
+            self.logger.debug(f"Creating order with raw parameters:")
+            self.logger.debug(f"- Symbol: {symbol}")
+            self.logger.debug(f"- Order Type: {order_type}, Type: {type(order_type)}")
+            self.logger.debug(f"- Side: {side}, Type: {type(side)}")
+            self.logger.debug(f"- Amount: {amount}")
             
             # 确保 side 是正确的格式
-            side_str = side.value if isinstance(side, OrderSide) else side.upper()
+            if isinstance(side, OrderSide):
+                side_str = side.value
+            else:
+                side_str = str(side).upper()
+                
             self.logger.debug(f"Processed side parameter: {side_str}")
             
+            # 验证 side 参数
+            if side_str not in ['BUY', 'SELL']:
+                raise ValueError(f"Invalid side value: {side_str}")
+                
             order_params = {
                 'symbol': self.exchange.market_id(symbol),
                 'side': side_str,
-                'type': order_type.value,
-                'quantity': str(amount),
+                'type': order_type.value.upper() if hasattr(order_type, 'value') else str(order_type).upper(),
+                'quantity': str(amount)
             }
             
             self.logger.debug(f"Final order parameters: {order_params}")
             return self.exchange.fapiPrivatePostOrder(order_params)
+            
         except Exception as e:
             self.logger.error(f"Error creating order: {str(e)}")
             self.logger.error(f"Failed parameters: {order_params}")

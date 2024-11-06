@@ -92,7 +92,7 @@ class FuturesStrategy:
                 
                 # 检查是否有足够的余额
                 if available_balance >= required_margin:
-                    # 计算需要的数量（考虑最小交易单位）
+                    # 计算需要的数量（考虑最交易单位）
                     required_quantity = round(self.min_position_value / current_price, 3)  # 保留3位小数
                     if required_quantity > 0:
                         self._open_short(symbol, current_price)
@@ -171,7 +171,12 @@ class FuturesStrategy:
                 
             self.logger.info(f"Attempting to open short position with quantity: {target_qty} (Value: {position_value} USDT)")
             
-            # 创建订单
+            self.logger.debug(f"Creating short order:")
+            self.logger.debug(f"- Symbol: {symbol}")
+            self.logger.debug(f"- Order Type: {OrderType.MARKET}")
+            self.logger.debug(f"- Side: {OrderSide.SELL}")
+            self.logger.debug(f"- Amount: {target_qty}")
+            
             order = self.broker.create_order(
                 symbol=symbol,
                 order_type=OrderType.MARKET,
@@ -232,3 +237,26 @@ class FuturesStrategy:
         if self.margin_mode.lower() == 'isolated':
             return self.get_isolated_margin_balance(symbol)
         return self.get_available_balance()
+
+    def validate_order_params(self, params: dict) -> bool:
+        """验证订单参数"""
+        required_fields = {
+            'symbol': str,
+            'side': str,
+            'type': str,
+            'quantity': str
+        }
+        
+        for field, field_type in required_fields.items():
+            if field not in params:
+                self.logger.error(f"Missing required field: {field}")
+                return False
+            if not isinstance(params[field], field_type):
+                self.logger.error(f"Invalid type for {field}: expected {field_type}, got {type(params[field])}")
+                return False
+                
+        if params['side'] not in ['BUY', 'SELL']:
+            self.logger.error(f"Invalid side value: {params['side']}")
+            return False
+            
+        return True

@@ -9,7 +9,10 @@ import time
 
 def main():
     # 设置日志
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     
     # 设置交易对
     symbols = ['ETHUSDT']
@@ -40,7 +43,7 @@ def main():
         broker=broker,
         symbols=symbols,
         leverage=50,
-        min_position_value=50  # Reduced from 100 to 50 USDT
+        min_position_value=100  # 目标仓位价值100 USDT。例如：以50倍杠杆开仓，实际需要保证金为2 USDT (100/50)。再加上10%缓冲，最终需要2.2 USDT保证金
     )
     
     # 初始化数据馈送
