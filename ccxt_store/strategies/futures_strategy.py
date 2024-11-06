@@ -31,6 +31,21 @@ class FuturesStrategy:
         # 初始化策略
         self._initialize_strategy()
         
+    def _initialize_strategy(self):
+        """初始化策略"""
+        try:
+            # 获取初始持仓信息
+            for symbol in self.symbols:
+                position = self.broker.get_position(symbol)
+                if position:
+                    self.positions[symbol] = position
+                    self.logger.info(f"Initial position for {symbol}: {position}")
+                else:
+                    self.logger.info(f"No initial position for {symbol}")
+                    
+        except Exception as e:
+            self.logger.error(f"Error initializing strategy: {str(e)}")
+        
     def on_data(self, symbol: str, data: Dict):
         """
         处理新的K线数据
