@@ -5,6 +5,8 @@ import logging
 
 from ccxt_store.ccxt_broker import CCXTBroker, OrderType, OrderSide
 
+MIN_NOTIONAL_SAFETY_FACTOR = 1.1  # 增加10%的安全边际
+
 class FuturesStrategy:
     """
     基于CCXT的期货空单策略
@@ -24,7 +26,7 @@ class FuturesStrategy:
         # 验证最小仓位价值
         for symbol in symbols:
             market = broker.exchange.market(symbol)
-            min_notional = float(market['limits']['cost']['min'])
+            min_notional = max(10.0, float(market['limits']['cost']['min']))
             if min_position_value < min_notional:
                 raise ValueError(f"min_position_value ({min_position_value}) must be greater than minimum notional ({min_notional}) for {symbol}")
         
@@ -103,7 +105,9 @@ class FuturesStrategy:
             # 获取市场信息
             market = self.broker.exchange.market(symbol)
             min_qty = float(market['limits']['amount']['min'])
-            min_notional = float(market['limits']['cost']['min'])
+            
+            # 使用更高的最小名义价值
+            min_notional = max(10.0, float(market['limits']['cost']['min']))
             
             # 计算最小需要的数量以满足最小名义价值
             min_required_qty = max(
@@ -119,11 +123,17 @@ class FuturesStrategy:
             # 计算目标数量（确保大于最小要求）
             target_qty = max(
                 round(self.min_position_value / current_price, precision),
-                min_required_qty
+                round(min_required_qty, precision)  # 确保最小数量也经过精度处理
             )
             
             # 计算实际下单价值
             position_value = target_qty * current_price
+            
+            # 添加更多日志
+            self.logger.info(f"Market minimum notional: {min_notional} USDT")
+            self.logger.info(f"Calculated minimum quantity: {min_required_qty}")
+            self.logger.info(f"Target quantity: {target_qty}")
+            self.logger.info(f"Position value: {position_value} USDT")
             
             # 获取可用余额
             available_balance = self.broker.get_available_balance()
@@ -133,6 +143,11 @@ class FuturesStrategy:
             
             if available_balance < required_margin:
                 self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
+                return
+                
+            # 最后验证名义价值
+            if position_value < min_notional:
+                self.logger.warning(f"Position value {position_value} USDT is still less than minimum notional {min_notional} USDT")
                 return
                 
             self.logger.info(f"Attempting to open short position with quantity: {target_qty} (Value: {position_value} USDT)")
