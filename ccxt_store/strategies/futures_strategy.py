@@ -103,11 +103,6 @@ class FuturesStrategy:
                 self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
                 return
                 
-            # 转移保证金到逐仓账户
-            if not self.broker.transfer_to_isolated_margin(symbol, required_margin):
-                self.logger.error(f"Failed to transfer margin to isolated account")
-                return
-                
             # 计算需要的数量（考虑最小交易单位）
             required_quantity = round(self.min_position_value / current_price, 3)  # 保留3位小数
             
@@ -118,6 +113,7 @@ class FuturesStrategy:
                 
             self.logger.info(f"Attempting to open short position with quantity: {required_quantity}")
             
+            # 直接开仓，不需要预先转移保证金
             order = self.broker.create_order(
                 symbol=symbol,
                 order_type=OrderType.MARKET,
