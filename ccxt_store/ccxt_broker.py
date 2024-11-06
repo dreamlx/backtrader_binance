@@ -271,3 +271,19 @@ class CCXTBroker:
         except Exception as e:
             self.logger.error(f"Error getting available balance: {str(e)}")
             return 0.0
+
+    def transfer_to_isolated_margin(self, symbol: str, amount: float) -> bool:
+        """将资金转入逐仓保证金账户"""
+        try:
+            # 转移资金到逐仓保证金账户
+            self.exchange.fapiPrivatePostPositionMargin({
+                'symbol': self.exchange.market_id(symbol),
+                'amount': str(amount),
+                'type': 1,  # 1: 转入; 2: 转出
+                'positionSide': 'BOTH'  # 双向持仓模式
+            })
+            self.logger.info(f"Transferred {amount} USDT to isolated margin for {symbol}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error transferring to isolated margin: {str(e)}")
+            return False
