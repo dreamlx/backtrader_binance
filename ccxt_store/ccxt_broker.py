@@ -29,8 +29,8 @@ class CCXTBroker:
     def __init__(
         self,
         store,
-        leverage: int = 1,
-        margin_mode: str = 'isolated',
+        leverage: int = 50,
+        margin_mode: str = 'cross',
         default_type: str = 'future'
     ):
         self.store = store

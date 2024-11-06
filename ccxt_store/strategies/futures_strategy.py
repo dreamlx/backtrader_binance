@@ -113,12 +113,13 @@ class FuturesStrategy:
                 
             self.logger.info(f"Attempting to open short position with quantity: {required_quantity}")
             
-            # 直接开仓，不需要预先转移保证金
+            # 创建订单
             order = self.broker.create_order(
                 symbol=symbol,
                 order_type=OrderType.MARKET,
                 side=OrderSide.SELL,  # 做空
-                amount=required_quantity
+                amount=required_quantity,
+                params={'positionSide': 'BOTH'}  # 确保使用双向持仓模式
             )
             
             self.logger.info(f"Short position opened: {order}")
