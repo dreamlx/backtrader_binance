@@ -142,8 +142,8 @@ class FuturesStrategy:
             position_value = target_qty * current_price
             
             # 计算所需保证金（考虑初始保证金和维持保证金）
-            initial_margin_rate = 0.5  # 2% initial margin rate for 50x leverage
-            maintenance_margin_rate = 0.05  # 1% maintenance margin
+            initial_margin_rate = 0.02  # 2% initial margin rate for 50x leverage
+            maintenance_margin_rate = 0.005  # 0.5% maintenance margin
             
             # 计算所需的总保证金
             required_margin = (position_value * initial_margin_rate) * MIN_NOTIONAL_SAFETY_FACTOR
@@ -168,6 +168,14 @@ class FuturesStrategy:
             if position_value < min_notional:
                 self.logger.warning(f"Position value {position_value} USDT is still less than minimum notional {min_notional} USDT")
                 return
+                
+            # 计算完 total_required_margin 后，先转入保证金
+            if self.broker.margin_mode.lower() == 'isolated':
+                transfer_amount = total_required_margin * 1.1  # 多转 10% 作为缓冲
+                success = self.broker.transfer_to_isolated_margin(symbol, transfer_amount)
+                if not success:
+                    self.logger.error("Failed to transfer margin to isolated account")
+                    return
                 
             self.logger.info(f"Attempting to open short position with quantity: {target_qty} (Value: {position_value} USDT)")
             
@@ -208,3 +216,18 @@ class FuturesStrategy:
         except Exception as e:
             self.logger.error(f"Error transferring to futures account: {str(e)}")
             return False
+
+    def get_isolated_margin_balance(self, symbol: str) -> float:
+        try:
+            position = self.broker.get_position(symbol)
+            if position:
+                return float(position['isolatedWallet'])
+            return 0.0
+        except Exception as e:
+            self.logger.error(f"Error getting isolated margin balance: {str(e)}")
+            return 0.0
+
+    def check_available_margin(self, symbol: str) -> float:
+        if self.margin_mode.lower() == 'isolated':
+            return self.get_isolated_margin_balance(symbol)
+        return self.get_available_balance()
