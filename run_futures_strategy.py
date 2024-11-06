@@ -27,8 +27,7 @@ def main():
         store=store,
         leverage=50,
         margin_mode='isolated',
-        default_type='future',
-        symbol='ETHUSDT'
+        default_type='future'
     )
     
     # 设置交易对
