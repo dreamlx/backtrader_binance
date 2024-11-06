@@ -254,3 +254,20 @@ class CCXTBroker:
         except Exception as e:
             self.logger.error(f"Error closing position: {str(e)}")
             raise
+
+    def get_available_balance(self) -> float:
+        """获取可用余额"""
+        try:
+            if self.default_type == 'future':
+                account = self.exchange.fapiPrivateV2GetAccount()
+                # 获取USDT资产
+                usdt_asset = next(
+                    (asset for asset in account['assets'] if asset['asset'] == 'USDT'),
+                    None
+                )
+                if usdt_asset:
+                    return float(usdt_asset['availableBalance'])
+            return 0.0
+        except Exception as e:
+            self.logger.error(f"Error getting available balance: {str(e)}")
+            raise

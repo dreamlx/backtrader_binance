@@ -76,6 +76,16 @@ class FuturesStrategy:
     def _open_short(self, symbol: str, current_price: float):
         """开空仓"""
         try:
+            # 获取可用余额
+            available_balance = self.broker.get_available_balance()
+            
+            # 计算需要的保证金（考虑杠杆）
+            required_margin = (self.min_position_value / self.leverage) * 1.1  # 增加10%作为缓冲
+            
+            if available_balance < required_margin:
+                self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
+                return
+                
             # 计算需要的数量
             required_quantity = self.min_position_value / current_price
             
@@ -86,11 +96,12 @@ class FuturesStrategy:
                 amount=required_quantity
             )
             
-            self.orders[symbol] = order
-            self.logger.info(f"Opening short position: {required_quantity} contracts")
+            self.logger.info(f"Short position opened: {order}")
+            return order
             
         except Exception as e:
             self.logger.error(f"Error opening short position: {str(e)}")
+            raise
             
     def _close_position(self, symbol: str):
         """平仓"""
