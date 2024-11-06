@@ -99,11 +99,6 @@ class FuturesStrategy:
             # 计算需要的保证金（考虑杠杆）
             required_margin = (self.min_position_value / self.leverage) * 1.1  # 增加10%作为缓冲
             
-            # 添加转移保证金的步骤
-            if not self.broker.transfer_to_isolated_margin(symbol, required_margin):
-                self.logger.error("Failed to transfer margin to isolated account")
-                return
-                
             if available_balance < required_margin:
                 self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
                 return
@@ -111,11 +106,15 @@ class FuturesStrategy:
             # 计算需要的数量（考虑最小交易单位）
             required_quantity = round(self.min_position_value / current_price, 3)  # 保留3位小数
             
-            # 添加数量检查
             if required_quantity <= 0:
                 self.logger.warning(f"Calculated quantity too small: {required_quantity}")
                 return
                 
+            # 添加额外参数以确保使用逐仓模式
+            params = {
+                'marginType': 'ISOLATED'
+            }
+            
             self.logger.info(f"Attempting to open short position with quantity: {required_quantity}")
             
             # 创建订单
@@ -123,7 +122,8 @@ class FuturesStrategy:
                 symbol=symbol,
                 order_type=OrderType.MARKET,
                 side=OrderSide.SELL,  # 做空
-                amount=required_quantity
+                amount=required_quantity,
+                params=params  # 添加额外参数
             )
             
             self.logger.info(f"Short position opened: {order}")
