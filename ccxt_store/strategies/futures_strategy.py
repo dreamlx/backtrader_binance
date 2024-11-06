@@ -118,9 +118,12 @@ class FuturesStrategy:
             min_notional = max(10.0, float(market['limits']['cost']['min']))
             
             # 获取精度
-            precision = market['precision']['amount']
-            if isinstance(precision, float):
-                precision = int(precision)
+            precision_str = str(market['precision']['amount'])
+            # 计算小数位数
+            if '.' in precision_str:
+                precision = len(precision_str.split('.')[-1])
+            else:
+                precision = int(precision_str)
             
             # 计算最小需要的数量以满足最小名义价值
             min_required_qty = min_notional / current_price
