@@ -210,9 +210,17 @@ class CCXTBroker:
         """关闭持仓"""
         try:
             position = self.get_position(symbol)
+            self.logger.debug(f"Current position for {symbol}: {position}")
+            
             if position and float(position['positionAmt']) != 0:
-                side = OrderSide.SELL if float(position['positionAmt']) > 0 else OrderSide.BUY
-                amount = abs(float(position['positionAmt']))
+                position_amt = float(position['positionAmt'])
+                side = OrderSide.SELL if position_amt > 0 else OrderSide.BUY
+                amount = abs(position_amt)
+                
+                self.logger.info(f"Closing position for {symbol}")
+                self.logger.info(f"Position amount: {position_amt}")
+                self.logger.info(f"Close side: {side}")
+                self.logger.info(f"Close amount: {amount}")
                 
                 return self.create_order(
                     symbol=symbol,
@@ -220,9 +228,13 @@ class CCXTBroker:
                     side=side,
                     amount=amount
                 )
-                
+            else:
+                self.logger.info(f"No position to close for {symbol}")
+                return None
+            
         except Exception as e:
             self.logger.error(f"Error closing position: {str(e)}")
+            self.logger.error(f"Position details: {position if 'position' in locals() else 'Not available'}")
             raise
 
     def get_available_balance(self) -> float:

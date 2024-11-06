@@ -16,7 +16,7 @@ class FuturesStrategy:
         broker: CCXTBroker,
         symbols: list,
         leverage: int = 50,
-        min_position_value: float = 50,  # 最小仓位价值
+        min_position_value: float = 10,  # 最小仓位价值
     ):
         self.broker = broker
         self.symbols = symbols
@@ -203,11 +203,26 @@ class FuturesStrategy:
     def _close_position(self, symbol: str):
         """平仓"""
         try:
-            self.broker.close_position(symbol)
-            self.logger.info(f"Closing position for {symbol}")
-            
+            # 获取当前持仓信息
+            position = self.broker.get_position(symbol)
+            if position:
+                position_amt = float(position['positionAmt'])
+                self.logger.info(f"Attempting to close position for {symbol}")
+                self.logger.info(f"Current position amount: {position_amt}")
+                
+                if position_amt == 0:
+                    self.logger.info("No position to close")
+                    return
+                    
+                result = self.broker.close_position(symbol)
+                if result:
+                    self.logger.info(f"Successfully closed position for {symbol}")
+                    self.logger.info(f"Close order result: {result}")
+                else:
+                    self.logger.warning(f"Failed to close position for {symbol}")
         except Exception as e:
             self.logger.error(f"Error closing position: {str(e)}")
+            raise
 
     # 从现货账户转入合约账户
     def transfer_to_futures_account(self, amount: float, currency: str = 'USDT') -> bool:
