@@ -27,11 +27,12 @@ def main():
         store=store,
         leverage=50,
         margin_mode='isolated',
-        default_type='future'
+        default_type='future',
+        symbol='ETHUSDT'
     )
     
     # 设置交易对
-    symbols = ['ETH/USDT:USDT']
+    symbols = ['ETHUSDT']
     
     # 初始化策略
     strategy = FuturesStrategy(
