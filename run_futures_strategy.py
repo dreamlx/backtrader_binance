@@ -40,7 +40,7 @@ def main():
         broker=broker,
         symbols=symbols,
         leverage=50,
-        min_position_value=20
+        min_position_value=500
     )
     
     # 初始化数据馈送

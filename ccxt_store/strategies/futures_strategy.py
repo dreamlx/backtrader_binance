@@ -103,8 +103,15 @@ class FuturesStrategy:
                 self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
                 return
                 
-            # 计算需要的数量
-            required_quantity = self.min_position_value / current_price
+            # 计算需要的数量（考虑最小交易单位）
+            required_quantity = round(self.min_position_value / current_price, 3)  # 保留3位小数
+            
+            # 添加数量检查
+            if required_quantity <= 0:
+                self.logger.warning(f"Calculated quantity too small: {required_quantity}")
+                return
+                
+            self.logger.info(f"Attempting to open short position with quantity: {required_quantity}")
             
             order = self.broker.create_order(
                 symbol=symbol,
