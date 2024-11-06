@@ -14,8 +14,18 @@ exchange = ccxt.binance({
         'defaultType': 'future',  # Use futures
         'adjustForTimeDifference': True,
         'createMarketBuyOrderRequiresPrice': False,
+        'hedgeMode': False,  # 添加对冲模式设置
+        'defaultNetwork': 'USDT',  # 指定默认网络
     }
 })
+
+# 添加交易所连接验证
+try:
+    exchange.load_markets()
+    print("Successfully connected to Binance Futures")
+except Exception as e:
+    print(f"Failed to connect to exchange: {e}")
+    exit(1)
 
 """
 这是一个简单的买卖策略示例，主要逻辑如下:
@@ -33,7 +43,7 @@ exchange = ccxt.binance({
      c. 如果没有持仓且没有未完成的买入订单,则可以考虑买入
 
 3. 订单管理:
-   - 使用self.orders字典记录每个交易对的订单
+   - 使用self.orders字典记录每个交易对订单
    - 避免重复下单,确保一个交易对同时只有一个活跃订单
    - 订单完成后更新订单状态
 
@@ -63,7 +73,7 @@ class JustBuySellStrategy(bt.Strategy):
         for data in self.datas:
             try:
                 symbol = data._name
-                exchange.fapiPrivate_post_leverage({
+                exchange.fapiPrivatePostLeverage({
                     'symbol': symbol.replace('/', ''),
                     'leverage': self.p.leverage
                 })
@@ -97,7 +107,7 @@ class JustBuySellStrategy(bt.Strategy):
                 if status == 0:  # Live trade
                     try:
                         # Get futures position information
-                        positions = exchange.fapiPrivate_get_positionrisk()
+                        positions = exchange.fapiPrivateGetPositionRisk()
                         current_position = next((pos for pos in positions if pos['symbol'] == ticker.replace('/', '')), None)
                         
                         current_price = data.close[0]
@@ -147,15 +157,25 @@ class JustBuySellStrategy(bt.Strategy):
                         traceback.print_exc()
 
     def notify_order(self, order):
-        """Changing the status of the order"""
-        order_data_name = order.data._name  # Name of ticker from order
-        self.log(f'Order number {order.ref} {order.info["order_number"]} {order.getstatusname()} {"Buy" if order.isbuy() else "Sell"} {order_data_name} {order.size} @ {order.price}')
-        if order.status == bt.Order.Completed:  # If the order is fully executed
-            if order.isbuy():  # The order to buy
-                self.log(f'Buy {order_data_name} Price: {order.executed.price:.2f}, Value {order.executed.value:.2f} {self.p.coin_target}, Commission {order.executed.comm:.10f} {self.p.coin_target}')
-            else:  # The order to sell
-                self.log(f'Sell {order_data_name} Price: {order.executed.price:.2f}, Value {order.executed.value:.2f} {self.p.coin_target}, Commission {order.executed.comm:.10f} {self.p.coin_target}')
-            self.orders[order_data_name] = None  # Reset the order to enter the position
+        if order.status in [order.Submitted, order.Accepted]:
+            return  # 等待进一步的状态更新
+        
+        if order.status == order.Completed:
+            self.handle_order_completion(order)
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.handle_order_failure(order)
+        
+    def handle_order_completion(self, order):
+        self.daily_trades += 1
+        self.log(f"Order completed - {'BUY' if order.isbuy() else 'SELL'} "
+                f"Price: {order.executed.price:.2f}, "
+                f"Cost: {order.executed.value:.2f}, "
+                f"Comm: {order.executed.comm:.2f}")
+        
+    def handle_order_failure(self, order):
+        self.log(f"Order failed - Status: {order.getstatusname()}")
+        # 重置订单状态
+        self.orders[order.data._name] = None
 
     def notify_trade(self, trade):
         """Changing the position status"""
