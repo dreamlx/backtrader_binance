@@ -14,12 +14,19 @@ class FuturesStrategy:
         broker: CCXTBroker,
         symbols: list,
         leverage: int = 50,
-        min_position_value: float = 20,  # 最小仓位价值
+        min_position_value: float = 100,  # 最小仓位价值
     ):
         self.broker = broker
         self.symbols = symbols
         self.leverage = leverage
         self.min_position_value = min_position_value
+        
+        # 验证最小仓位价值
+        for symbol in symbols:
+            market = broker.exchange.market(symbol)
+            min_notional = float(market['limits']['cost']['min'])
+            if min_position_value < min_notional:
+                raise ValueError(f"min_position_value ({min_position_value}) must be greater than minimum notional ({min_notional}) for {symbol}")
         
         # 初始化存储
         self.orders: Dict[str, Dict] = {}
@@ -98,43 +105,44 @@ class FuturesStrategy:
             min_qty = float(market['limits']['amount']['min'])
             min_notional = float(market['limits']['cost']['min'])
             
-            # 获取可用余额
-            available_balance = self.broker.get_available_balance()
+            # 计算最小需要的数量以满足最小名义价值
+            min_required_qty = max(
+                min_qty,
+                min_notional / current_price
+            )
             
-            # 计算下单数量（考虑最小限制）
+            # 获取精度
             precision = market['precision']['amount']
-            # 确保precision是整数
             if isinstance(precision, float):
                 precision = int(precision)
             
-            required_quantity = max(
+            # 计算目标数量（确保大于最小要求）
+            target_qty = max(
                 round(self.min_position_value / current_price, precision),
-                min_qty
+                min_required_qty
             )
             
-            # 计算下单价值
-            position_value = required_quantity * current_price
+            # 计算实际下单价值
+            position_value = target_qty * current_price
             
-            # 检查下单价值是否满足最小名义价值
-            if position_value < min_notional:
-                self.logger.warning(f"Position value {position_value} USDT is less than minimum notional {min_notional} USDT")
-                return
+            # 获取可用余额
+            available_balance = self.broker.get_available_balance()
             
-            # 计算所需保证金（考虑杠杆）
-            required_margin = (position_value / self.leverage) * 1.1  # 增加10%作为缓冲
+            # 计算所需保证金
+            required_margin = (position_value / self.leverage) * 1.1
             
             if available_balance < required_margin:
                 self.logger.warning(f"Insufficient balance. Required: {required_margin} USDT, Available: {available_balance} USDT")
                 return
-            
-            self.logger.info(f"Attempting to open short position with quantity: {required_quantity}")
+                
+            self.logger.info(f"Attempting to open short position with quantity: {target_qty} (Value: {position_value} USDT)")
             
             # 创建订单
             order = self.broker.create_order(
                 symbol=symbol,
                 order_type=OrderType.MARKET,
-                side=OrderSide.SELL,  # 做空
-                amount=required_quantity
+                side=OrderSide.SELL,
+                amount=target_qty
             )
             
             self.logger.info(f"Short position opened: {order}")
